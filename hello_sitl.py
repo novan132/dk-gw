@@ -12,6 +12,9 @@ buff_data_gcs = collections.deque([])
 access_ap_lock = threading.RLock()
 access_gcs_lock = threading.RLock()
 
+AP_CONNECTION_STRING = '/dev/ttyACM0'
+#AP_CONNECTION_STRING = 'tcp:localhost:5760'
+
 def producer_ap(ap_conn):
     # receive message from ap and place the message to buff_data_ap
     global buff_data_ap
@@ -20,28 +23,37 @@ def producer_ap(ap_conn):
         msg = ap_conn.recv_match()
         #print('ap msg', msg)
         if msg:
-            print(colorama.Fore.WHITE + 'append ap data:', msg)
-            with access_ap_lock:
+            if msg.get_type() == 'BAD_DATA':
+                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+            else:
+                #print(colorama.Fore.WHITE + 'append ap data:', msg)
+                #with access_ap_lock:
                 buff_data_ap.append(msg)
             
-        time.sleep(.00)
+        #time.sleep(.00)
 
 
 def consumer_ap(ap_conn):
     # read data from buff_data_gcs and send to ap_conn
-    global buf_data_gcs
+    
+    global buff_data_gcs
     msg = None
     while True:
         if buff_data_gcs:
+            #print(colorama.Fore.GREEN + 'consumer ap executed')
             with access_gcs_lock:
                 msg = buff_data_gcs.popleft()
-                print('pop buff_data_gcs: ', msg)
+                #print(colorama.Fore.YELLOW + 'pop buff_data_gcs: ', msg)
                            
         if msg is not None:
-            ap_conn.mav.send(msg, True)
-            msg = None
+            if msg.get_type() == 'BAD_DATA':
+                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+            else:
+                print(colorama.Fore.YELLOW + '[INFO] Send buff_data_gcs to AP', msg)
+                ap_conn.mav.send(msg, False)
+                msg = None
 
-        time.sleep(.00)
+        #time.sleep(.00)
 
 
 def producer_gcs1(gcs1_conn):
@@ -50,14 +62,33 @@ def producer_gcs1(gcs1_conn):
     while True:
         msg = gcs1_conn.recv_match()
         if msg:
-            print(colorama.Fore.WHITE + 'append gcs1 data:', msg)
-            with access_gcs_lock:
+            if msg.get_type() == 'BAD_DATA':
+                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+            else:
+                #print(colorama.Fore.WHITE + 'append gcs1 data:', msg)
+                #with access_gcs_lock:
                 buff_data_gcs.append(msg)
             
-        time.sleep(.00)
+        #time.sleep(.00)
+
+
+def producer_gcs2(gcs2_conn):
+    # receive message from gcs1 and place the message to buff_data_gcs1
+    global buf_data_gcs
+    while True:
+        msg = gcs2_conn.recv_match()
+        if msg:
+            if msg.get_type() == 'BAD_DATA':
+                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+            else:
+                #print(colorama.Fore.WHITE + 'append gcs1 data:', msg)
+                #with access_gcs_lock:
+                buff_data_gcs.append(msg)
+            
+        #time.sleep(.00)
 
         
-def consumer_gcs(gcs1_conn):
+def consumer_gcs(gcs1_conn, gcs2_conn):
     # read data from buff_data_ap and send to gcs1_conn
     global buff_data_ap
     msg = None
@@ -66,14 +97,20 @@ def consumer_gcs(gcs1_conn):
         if buff_data_ap:
             with access_ap_lock:
                 msg = buff_data_ap.popleft()
-                print('pop buff_data_ap: ', msg)
+                #print('pop buff_data_ap: ', msg)
         
         if msg is not None:
-            print(colorama.Fore.BLUE + 'send msg to gcs1')
-            gcs1_conn.mav.send(msg, True)
-            msg = None
+            if msg.get_type() == 'BAD_DATA':
+                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+            else:
+                #print(msg)
+                #print(colorama.Fore.BLUE + 'send msg to gcs1')
+                #print(colorama.Fore.GREEN + '[INFO] Send buff_data_ap to GCS: ', msg)
+                gcs1_conn.mav.send(msg, False)
+                gcs2_conn.mav.send(msg, False)
+                msg = None
 
-        time.sleep(.00)
+        #time.sleep(.00)
 
 
 def check_cancel():
@@ -84,14 +121,16 @@ def check_cancel():
 def main():
     print(colorama.Fore.WHITE + 'app started.')
     # create list of threads
-    ap_conn = mavutil.mavlink_connection('tcp:localhost:5760')
-    gcs1_conn = mavutil.mavlink_connection('udpin:localhost:14550')
+    ap_conn = mavutil.mavlink_connection(AP_CONNECTION_STRING, baud=115200, source_system=255)#, source_system=1)
+    gcs1_conn = mavutil.mavlink_connection('udpin:192.168.1.10:14550', source_system=1)
+    gcs2_conn = mavutil.mavlink_connection('udpin:192.168.1.10:14552', source_system=1)
     
     threads = [
         threading.Thread(target=producer_ap, args=(ap_conn,)),
         threading.Thread(target=consumer_ap, args=(ap_conn,)),
         threading.Thread(target=producer_gcs1, args=(gcs1_conn,)),
-        threading.Thread(target=consumer_gcs, args=(gcs1_conn,)),
+        threading.Thread(target=producer_gcs2, args=(gcs2_conn,)),
+        threading.Thread(target=consumer_gcs, args=(gcs1_conn, gcs2_conn)),
     ]
 
     abort_thread = threading.Thread(target=check_cancel)
