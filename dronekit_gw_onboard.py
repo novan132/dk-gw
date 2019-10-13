@@ -72,11 +72,11 @@ def producer_gcs1(gcs1_conn):
         #time.sleep(.00)
 
 
-def producer_gcs2(gcs2_conn):
+def producer_dk_gw_ground(dk_gw_ground_conn):
     # receive message from gcs1 and place the message to buff_data_gcs1
     global buf_data_gcs
     while True:
-        msg = gcs2_conn.recv_match()
+        msg = dk_gw_ground_conn.recv_match()
         if msg:
             if msg.get_type() == 'BAD_DATA':
                 print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
@@ -88,7 +88,7 @@ def producer_gcs2(gcs2_conn):
         #time.sleep(.00)
 
         
-def consumer_gcs(gcs1_conn, gcs2_conn):
+def consumer_gcs(gcs1_conn, dk_gw_ground_conn):
     # read data from buff_data_ap and send to gcs1_conn
     global buff_data_ap
     msg = None
@@ -107,7 +107,7 @@ def consumer_gcs(gcs1_conn, gcs2_conn):
                 #print(colorama.Fore.BLUE + 'send msg to gcs1')
                 #print(colorama.Fore.GREEN + '[INFO] Send buff_data_ap to GCS: ', msg)
                 gcs1_conn.mav.send(msg, False)
-                gcs2_conn.mav.send(msg, False)
+                dk_gw_ground_conn.mav.send(msg, False)
                 msg = None
 
         #time.sleep(.00)
@@ -123,14 +123,14 @@ def main():
     # create list of threads
     ap_conn = mavutil.mavlink_connection(AP_CONNECTION_STRING, baud=115200, source_system=255)#, source_system=1)
     gcs1_conn = mavutil.mavlink_connection('udpin:192.168.1.10:14550', source_system=1)
-    gcs2_conn = mavutil.mavlink_connection('udpin:192.168.1.10:14552', source_system=1)
+    dk_gw_ground_conn = mavutil.mavlink_connection('udpin:192.168.1.10:14552', source_system=1)
     
     threads = [
         threading.Thread(target=producer_ap, args=(ap_conn,)),
         threading.Thread(target=consumer_ap, args=(ap_conn,)),
         threading.Thread(target=producer_gcs1, args=(gcs1_conn,)),
-        threading.Thread(target=producer_gcs2, args=(gcs2_conn,)),
-        threading.Thread(target=consumer_gcs, args=(gcs1_conn, gcs2_conn)),
+        threading.Thread(target=producer_dk_gw_ground, args=(dk_gw_ground_conn,)),
+        threading.Thread(target=consumer_gcs, args=(gcs1_conn, dk_gw_ground_conn)),
     ]
 
     abort_thread = threading.Thread(target=check_cancel)
