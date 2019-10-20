@@ -11,14 +11,17 @@ buff_data_gcs = collections.deque([])
 access_dk_gw_onboard_lock = threading.RLock()
 access_gcs_lock = threading.RLock()
 
-DK_GW_ONBOARD_CONNECTION_STRING = 'udpout:192.168.1.100:14552'
+DK_GW_ONBOARD_CONNECTION_STRING = 'udpout:192.168.1.101:14552'
 GCS1_CONNECTION_STRING = 'udpin:0.0.0.0:14554'
 GCS2_CONNECTION_STRING = 'udpin:0.0.0.0:14556'
 
 stop_flag = False
+message_ok_flag = False
+
 
 def producer_dk_gw_onboard(dk_gw_onboard_conn):
     global buff_data_dk_gw_onboard
+    global message_ok_flag
     while True:
         msg = dk_gw_onboard_conn.recv_match()
         #print(colorama.Fore.YELLOW + '[INFO] receive msg:', msg)
@@ -26,6 +29,8 @@ def producer_dk_gw_onboard(dk_gw_onboard_conn):
             if msg.get_type() == 'BAD_DATA':
                 print(colorama.Fore.YELLOW + '[INFO] proucer dk gw onboard: BAD DATA')
             else:
+                if message_ok_flag is not True:
+                    message_ok_flag = True
                 #print(colorama.Fore.YELLOW + '[INFO] Receive msg dk gw onboard', msg)
                 buff_data_dk_gw_onboard.append(msg)
 
@@ -38,6 +43,8 @@ def consumer_dk_gw_onboard(dk_gw_onboard_conn):
     global buff_data_gcs
     msg = None
     while True:
+        if message_ok_flag is not True:
+            dk_gw_onboard_conn.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_GENERIC, 0, 0, 0)
         if buff_data_gcs:
             #with access_gcs_lock:
             msg = buff_data_gcs.popleft()
@@ -56,8 +63,10 @@ def consumer_dk_gw_onboard(dk_gw_onboard_conn):
 
 def producer_gcs1(gcs1_conn):
     global buff_data_gcs
+    
     while True:
-        gcs1_conn.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_GENERIC, 0, 0, 0)
+        #if message_ok_flag is not True:
+        #    gcs1_conn.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_GENERIC, 0, 0, 0)
         msg = gcs1_conn.recv_match()
         if msg:
             if msg.get_type() == 'BAD_DATA':
@@ -74,11 +83,12 @@ def producer_gcs1(gcs1_conn):
 def producer_gcs2(gcs2_conn):
     global buff_data_gcs
     while True:
-        gcs2_conn.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_GENERIC, 0, 0, 0)
+        #if message_ok_flag is not True:
+        #    gcs2_conn.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_GENERIC, 0, 0, 0)
         msg = gcs2_conn.recv_match()
         if msg:
             if msg.get_type() == 'BAD_DATA':
-                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+                print(colorama.Fore.YELLOW + '[INFO] producer_gcs2 BAD DATA')
             else:
                 #print(colorama.Fore.WHITE + 'append gcs1 data:', msg)
                 buff_data_gcs.append(msg)
@@ -97,7 +107,7 @@ def consumer_gcs(gcs1_conn, gcs2_conn):
             msg = buff_data_dk_gw_onboard.popleft()
         if msg is not None:
             if msg.get_type() == 'BAD_DATA':
-                print(colorama.Fore.YELLOW + '[INFO] BAD DATA')
+                print(colorama.Fore.YELLOW + '[INFO] consumer gcs BAD DATA')
             else:
                 #print(colorama.Fore.GREEN + '[INFO] Send buff_data_ap to GCS: ', msg)
                 gcs1_conn.mav.send(msg, False)
