@@ -1,0 +1,4 @@
+software install with apt:
+git, python-lxml, python-pip, python-dev, build-essential, libxml2-dev, libxslt1-dev
+software install with pip:
+colorama, pyserial, pymavlink, future, lxml, six, monotonic, psutil

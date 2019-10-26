@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from __future__ import print_function
 from pymavlink import mavutil
 import collections
@@ -144,16 +146,16 @@ def main():
     ]
 
     abort_thread = threading.Thread(target=check_cancel)
-    abort_thread.start()
+    #abort_thread.start()
 
     [t.setDaemon(True) for t in threads]
     
     [t.start() for t in threads]
-    while any([t.is_alive() for t in threads]):
+    '''while any([t.is_alive() for t in threads]):
         [t.join(.001) for t in threads]
         if not abort_thread.is_alive():
             print(colorama.Fore.WHITE + 'Canceling on your request...')
-            break
+            break'''
 
     [t.join() for t in threads]
 
