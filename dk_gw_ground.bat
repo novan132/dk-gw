@@ -1,0 +1,1 @@
+c:\Python27\python2.exe c:\Users\novan\dk-gw\dronekit_gw_ground.py
