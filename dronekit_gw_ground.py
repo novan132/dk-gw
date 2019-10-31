@@ -4,6 +4,7 @@ import collections
 import threading
 import time
 import colorama
+from backports import configparser
 
 buff_data_dk_gw_onboard = collections.deque([])
 buff_data_gcs = collections.deque([])
@@ -11,7 +12,7 @@ buff_data_gcs = collections.deque([])
 access_dk_gw_onboard_lock = threading.RLock()
 access_gcs_lock = threading.RLock()
 
-DK_GW_ONBOARD_CONNECTION_STRING = 'udpout:192.168.1.101:14552'
+DK_GW_ONBOARD_CONNECTION_STRING = 'udpout:192.168.1.21:14552'
 GCS1_CONNECTION_STRING = 'udpin:0.0.0.0:14554'
 GCS2_CONNECTION_STRING = 'udpin:0.0.0.0:14556'
 
@@ -142,8 +143,16 @@ def wait_conn(conn):
         time.sleep(0.5)
     
 def main():
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    print('ip: {}'.format(config['orangepi']['ip']))
+    print('port: {}'.format(config['orangepi']['port']))
+    ip = config['orangepi']['ip']
+    port = config['orangepi']['port']
+    
     print(colorama.Fore.WHITE + 'app dronekit_gw_ground started.')
-    dk_gw_onboard_conn = mavutil.mavlink_connection(DK_GW_ONBOARD_CONNECTION_STRING)
+    #dk_gw_onboard_conn = mavutil.mavlink_connection(DK_GW_ONBOARD_CONNECTION_STRING)
+    dk_gw_onboard_conn = mavutil.mavlink_connection('udpout:{}:{}'.format(ip, port))
     gcs1_conn = mavutil.mavlink_connection(GCS1_CONNECTION_STRING, source_system=1)
     gcs2_conn = mavutil.mavlink_connection(GCS2_CONNECTION_STRING, source_system=1)
 
