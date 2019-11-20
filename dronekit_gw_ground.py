@@ -12,9 +12,9 @@ buff_data_gcs = collections.deque([])
 access_dk_gw_onboard_lock = threading.RLock()
 access_gcs_lock = threading.RLock()
 
-DK_GW_ONBOARD_CONNECTION_STRING = 'udpout:192.168.1.21:14552'
-GCS1_CONNECTION_STRING = 'udpin:0.0.0.0:14554'
-GCS2_CONNECTION_STRING = 'udpin:0.0.0.0:14556'
+DK_GW_ONBOARD_CONNECTION_STRING = 'udpout:192.168.1.21:16000'
+GCS1_CONNECTION_STRING = 'udpin:0.0.0.0:15550'
+GCS2_CONNECTION_STRING = 'udpin:0.0.0.0:15552'
 
 stop_flag = False
 message_ok_flag = False
